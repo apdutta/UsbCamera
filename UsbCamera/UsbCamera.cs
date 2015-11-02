@@ -6,18 +6,35 @@ using Windows.Media.Capture;
 using Windows.Media.MediaProperties;
 using Windows.Storage;
 
-namespace UsbCamera
+namespace Microsoft.Maker.Devices.Media.UsbCamera
 {
     public class UsbCamera
     {
-        public MediaCapture mediaCapture;
+        /// <summary>
+        /// Media Capture object for the USB camera
+        /// </summary>
+        private MediaCapture mediaCapture;
 
-        private bool initialized = false;
+        /// <summary>
+        /// Control Flag
+        /// </summary>
+        private bool isInitialized = false;
+
+        /// <summary>
+        /// Gets the MediaCapture object for the USB camera 
+        /// </summary>
+        public MediaCapture getMediaCapture
+        {
+            get { return mediaCapture; }
+        }
 
         /// <summary>
         /// Asynchronously initializes webcam feed
         /// </summary>
-        public async Task InitializeCameraAsync()
+        /// <returns>
+        /// Task object: True if camera is successfully initialized; false otherwise.
+        /// </returns>
+        public async Task<bool> InitializeCameraAsync()
         {
             if (mediaCapture == null)
             {
@@ -27,9 +44,9 @@ namespace UsbCamera
                 if (cameraDevice == null)
                 {
                     // No camera found, report the error and break out of initialization
-                    Debug.WriteLine("No camera found!");
-                    initialized = false;
-                    return;
+                    Debug.WriteLine("UsbCamera: No camera found!");
+                    isInitialized = false;
+                    return false;
                 }
 
                 // Creates MediaCapture initialization settings with foudnd webcam device
@@ -39,23 +56,27 @@ namespace UsbCamera
                 try
                 {
                     await mediaCapture.InitializeAsync(settings);
-                    initialized = true;
+                    isInitialized = true;
+                    return true;
                 }
                 catch (UnauthorizedAccessException ex)
                 {
-                    Debug.WriteLine("UnauthorizedAccessException: " + ex.ToString());
-                    Debug.WriteLine("Ensure webcam capability is added in the manifest.");
+                    Debug.WriteLine("UsbCamera: UnauthorizedAccessException: " + ex.ToString() + "Ensure webcam capability is added in the manifest.");
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine("Exception when initializing MediaCapture:" + ex.ToString());
+                    Debug.WriteLine("UsbCamera: Exception when initializing MediaCapture:" + ex.ToString());
                 }
             }
+            return false;
         }
 
         /// <summary>
         /// Asynchronously begins live webcam feed
         /// </summary>
+        /// <returns>
+        /// Task object.
+        /// </returns>
         public async Task StartCameraPreview()
         {
             try
@@ -64,8 +85,8 @@ namespace UsbCamera
             }
             catch
             {
-                initialized = false;
-                Debug.WriteLine("Failed to start camera preview stream");
+                isInitialized = false;
+                Debug.WriteLine("UsbCamera: Failed to start camera preview stream");
 
             }
         }
@@ -74,6 +95,9 @@ namespace UsbCamera
         /// Asynchronously captures photo from camera feed and stores it in local storage. Returns image file as a StorageFile.
         /// File is stored in a temporary folder and could be deleted by the system at any time.
         /// </summary>
+        /// <returns>
+        /// Task object: Storage file with captured image.
+        /// </returns>
         public async Task<StorageFile> CapturePhoto()
         {
             StorageFile file;
@@ -95,14 +119,20 @@ namespace UsbCamera
         /// <summary>
         /// Returns true if webcam has been successfully initialized. Otherwise, returns false.
         /// </summary>
+        /// <returns>
+        /// Returns true if camera is initialized; false otherwise.
+        /// </returns>
         public bool IsInitialized()
         {
-            return initialized;
+            return isInitialized;
         }
 
         /// <summary>
         /// Asynchronously ends live webcam feed
         /// </summary>
+        /// <returns>
+        /// Task object.
+        /// </returns>
         public async Task StopCameraPreview()
         {
             try
@@ -111,20 +141,26 @@ namespace UsbCamera
             }
             catch
             {
-                Debug.WriteLine("Failed to stop camera preview stream");
+                Debug.WriteLine("UsbCamera: Failed to stop camera preview stream");
             }
         }
 
+        /// <summary>
+        /// Performs tasks associated with freeing, releasing, or resetting unmanaged resources.
+        /// </summary>
         public void Dispose()
         {
             mediaCapture?.Dispose();
-            initialized = false;
+            isInitialized = false;
         }
 
         /// <summary>
         /// Asynchronously looks for and returns first camera device found.
         /// If no device is found, return null
         /// </summary>
+        /// <returns>
+        /// Task object: Device information of the first detected camera device.
+        /// </returns>
         private static async Task<DeviceInformation> FindCameraDevice()
         {
             // Get available devices for capturing pictures
@@ -146,9 +182,15 @@ namespace UsbCamera
         /// <summary>
         /// Generates unique file name based on current time and date. Returns value as string.
         /// </summary>
-        private string GenerateNewFileName()
+        /// <param name = "prefix">
+        /// Prefix for image name. Default value = "IMG".
+        /// </param>
+        /// <returns>
+        /// Unique file name string.
+        /// </returns>
+        private string GenerateNewFileName(string prefix = "IMG")
         {
-            return "IMG_" + DateTime.UtcNow.ToString("yyyy-MMM-dd_HH-mm-ss");
+            return prefix + "_" + DateTime.UtcNow.ToString("yyyy-MMM-dd_HH-mm-ss");
         }
     }
 }
